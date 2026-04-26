@@ -132,7 +132,7 @@ def nordea_scraper():
 
     print(f"Nordea rates saved to {output_file}")
 
-    return True
+    return output_file
 
 
 if __name__ == "__main__":
