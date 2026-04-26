@@ -1,0 +1,19 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtuella miljöer
+.venv/
+venv/
+env/
+
+# Miljövariabler / hemligheter
+.env
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Genererad output
+output/
