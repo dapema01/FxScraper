@@ -1,0 +1,23 @@
+currency,name,buy_from_abroad,sell_to_abroad,mid_rate,date
+AUD,Australiensiska dollar,6.56350,6.65180,6.60765,11:59:59
+BRL,Brasilianska real,1.78780,1.88890,1.83835,11:59:59
+CAD,Kanadensiska dollar,6.64820,6.73610,6.69215,11:59:59
+CHF,Schweiziska franc,11.7061,11.8419,11.7740,11:59:59
+CNY,Kinesiska yuan,1.34890,1.37960,1.36425,11:59:59
+CZK,Tjeckiska koruna,0.43919,0.44853,0.44386,11:59:59
+DKK,Danska kronor,1.4334,1.4500,1.4417,11:59:59
+EUR,Euro,10.7062,10.8398,10.7730,11:59:59
+GBP,Pound sterling,12.3663,12.5117,12.4390,11:59:59
+HKD,Hong Kong dollar,1.16860,1.19310,1.18085,11:59:59
+HUF,Ungerska forint,0.029855,0.030881,0.030368,11:59:59
+ILS,Israelska new shekel,3.18210,3.34080,3.26145,11:59:59
+INR,Indiska rupees,0.0933530,0.0999980,0.0966755,11:59:59
+JPY,Japanska yen,0.0575410,0.0585660,0.0580535,11:59:59
+NOK,Norska kronor,0.9886,1.0034,0.9960,11:59:59
+NZD,Nya Zeeländska dollar,5.3995,5.4879,5.4437,11:59:59
+PLN,Polska zloty,2.51270,2.57440,2.54355,11:59:59
+SGD,Singapore dollar,7.20400,7.28730,7.24565,11:59:59
+THB,Thailändska baht,0.277590,0.290800,0.284195,11:59:59
+TRY,Turkiska lira,0.183480,0.219590,0.201535,11:59:59
+USD,Amerikanska dollar,9.18470,9.31800,9.25135,11:59:59
+ZAR,Sydafrikanska rand,0.556370,0.576820,0.566595,11:59:59

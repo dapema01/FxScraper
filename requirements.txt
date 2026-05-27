@@ -1,0 +1,3 @@
+botasaurus
+beautifulsoup4
+requests
