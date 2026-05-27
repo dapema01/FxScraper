@@ -22,6 +22,12 @@ DANSKE_URL = (
 
 
 FIELDNAMES = [
+    "pair",
+    "base_currency",
+    "quote_currency",
+    "quoted_per_units",
+    "bid_per_unit",
+    "ask_per_unit",
     "currency",
     "name",
     "buy_from_abroad",
@@ -47,12 +53,21 @@ def parse_danske_html(html):
         # En riktig datarad är 6 fält och börjar med en valutakod (3 bokstäver):
         # [USD, Amerikanska dollar, 9,3710, 9,5048, 9,4379, 2026-03-27]
         if len(cells) == 6 and len(cells[0]) == 3 and cells[0].isalpha():
+            currency = cells[0]
+            buy_from_abroad = cells[2].replace(",", ".")
+            sell_to_abroad = cells[3].replace(",", ".")
             rows.append(
                 {
-                    "currency": cells[0],
+                    "pair": f"{currency}/SEK",
+                    "base_currency": currency,
+                    "quote_currency": "SEK",
+                    "quoted_per_units": 1,
+                    "bid_per_unit": buy_from_abroad,
+                    "ask_per_unit": sell_to_abroad,
+                    "currency": currency,
                     "name": cells[1],
-                    "buy_from_abroad": cells[2].replace(",", "."),
-                    "sell_to_abroad": cells[3].replace(",", "."),
+                    "buy_from_abroad": buy_from_abroad,
+                    "sell_to_abroad": sell_to_abroad,
                     "mid_rate": cells[4].replace(",", "."),
                     "date": cells[5],
                 }
@@ -75,6 +90,7 @@ def write_rows_to_csv(rows, output_file):
     headless=True,
     reuse_driver=False,
     close_on_crash=True,
+    output=None,
 )
 def _scrape_danske(driver: Driver, data):
     driver.get(DANSKE_URL)

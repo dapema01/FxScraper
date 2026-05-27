@@ -1,6 +1,7 @@
 import csv
 from datetime import date
 from pathlib import Path
+from dataclasses import asdict
 
 from scrapers import (
     dnb_scraper,
@@ -88,7 +89,6 @@ def main():
             raw_rows = _read_csv_rows(output_file)
             unified = adapter(raw_rows, scraped_at=scraped_at)
             # Convert dataclass instances to plain dicts for the rolling file.
-            from dataclasses import asdict
             new_rows.extend(asdict(u) for u in unified)
             print(f"  Normalized: {len(unified)} rows from {scraper.__name__}")
 

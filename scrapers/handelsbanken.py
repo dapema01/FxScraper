@@ -26,15 +26,34 @@ HANDELSBANKEN_URL = (
 
 
 FIELDNAMES = [
-    "insref",
-    "instrument_name",
     "pair",
     "base_currency",
     "quote_currency",
+    "quoted_per_units",
+    "bid_per_unit",
+    "ask_per_unit",
+    "last_per_unit",
+    "insref",
+    "instrument_name",
     "last_rate",
     "bid_rate",
     "ask_rate",
 ]
+
+
+def _safe_float(value):
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_div(numerator, denominator):
+    if numerator is None or denominator in (None, 0):
+        return None
+    return numerator / denominator
 
 
 def parse_handelsbanken_payload(payload):
@@ -58,16 +77,30 @@ def parse_handelsbanken_payload(payload):
         if "/" in pair:
             base_currency, quote_currency = pair.split("/", 1)
 
+        # Millistream's `factor` is the quote multiplier — e.g. JPY is
+        # typically quoted as SEK per 100 JPY (factor=100), most others as
+        # SEK per 1 unit (factor=1). The per-unit rate is rate / factor.
+        factor_raw = _safe_float(item.get("factor"))
+        factor = int(factor_raw) if factor_raw and factor_raw == int(factor_raw) else 1
+
+        last_rate = _safe_float(item.get("lastprice"))
+        bid_rate = _safe_float(item.get("bidprice"))
+        ask_rate = _safe_float(item.get("askprice"))
+
         rows.append(
             {
-                "insref": item.get("insref"),
-                "instrument_name": name,
                 "pair": pair,
                 "base_currency": base_currency,
                 "quote_currency": quote_currency,
-                "last_rate": item.get("lastprice"),
-                "bid_rate": item.get("bidprice"),
-                "ask_rate": item.get("askprice"),
+                "quoted_per_units": factor,
+                "bid_per_unit": _safe_div(bid_rate, factor),
+                "ask_per_unit": _safe_div(ask_rate, factor),
+                "last_per_unit": _safe_div(last_rate, factor),
+                "insref": item.get("insref"),
+                "instrument_name": name,
+                "last_rate": last_rate,
+                "bid_rate": bid_rate,
+                "ask_rate": ask_rate,
             }
         )
 
@@ -88,6 +121,7 @@ def write_rows_to_csv(rows, output_file):
     headless=True,
     reuse_driver=False,
     close_on_crash=True,
+    output=None,
 )
 def _scrape_handelsbanken(driver: Driver, data):
     driver.get(HANDELSBANKEN_URL)

@@ -18,7 +18,12 @@ SEB_URL = "https://seb.se/ssc/trading/fx-rates-bff/api/rates/avista"
 
 FIELDNAMES = [
     "country",
-    "currency",
+    "pair",
+    "base_currency",
+    "quote_currency",
+    "quoted_per_units",
+    "bid_per_unit",
+    "ask_per_unit",
     "buy_rate",
     "sell_rate",
     "date",
@@ -69,12 +74,20 @@ def parse_seb_payload(payload):
         if not currency:
             continue
 
+        buy_rate = _cell_value(data, COLUMN_INDEX["buy_rate"])
+        sell_rate = _cell_value(data, COLUMN_INDEX["sell_rate"])
+
         parsed_rows.append(
             {
                 "country": _cell_value(data, COLUMN_INDEX["country"]),
-                "currency": currency,
-                "buy_rate": _cell_value(data, COLUMN_INDEX["buy_rate"]),
-                "sell_rate": _cell_value(data, COLUMN_INDEX["sell_rate"]),
+                "pair": f"{currency}/SEK",
+                "base_currency": currency,
+                "quote_currency": "SEK",
+                "quoted_per_units": 1,
+                "bid_per_unit": buy_rate,
+                "ask_per_unit": sell_rate,
+                "buy_rate": buy_rate,
+                "sell_rate": sell_rate,
                 "date": _cell_value(data, COLUMN_INDEX["date"]),
             }
         )
@@ -96,6 +109,7 @@ def write_rows_to_csv(rows, output_file):
     headless=True,
     reuse_driver=False,
     close_on_crash=True,
+    output=None,
 )
 def _scrape_seb(driver: Driver, data):
     driver.get(SEB_URL)

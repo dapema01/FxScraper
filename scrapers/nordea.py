@@ -29,14 +29,28 @@ HEADERS = {
 }
 
 
+# All rates are quoted as SEK per 1 unit of foreign currency (SEK = quote).
+#
+#   base_currency  : the foreign currency (USD, EUR, ...)
+#   quote_currency : always SEK in this scraper
+#   ask_sek_per_fx : SEK Nordea charges to SELL 1 unit of base_currency to you
+#                    (= what the bank sells FX for, = customer's buy price)
+#   bid_sek_per_fx : SEK Nordea pays to BUY 1 unit of base_currency from you
+#                    (= what the bank buys FX for, = customer's sell price)
+#
+# By construction ask >= bid; the difference is Nordea's spread.
 FIELDNAMES = [
-    "currency",
-    "sell_rate",
-    "buy_rate",
-    "sell_timestamp",
-    "buy_timestamp",
+    "pair",
+    "base_currency",
+    "quote_currency",
+    "quoted_per_units",
+    "bid_per_unit",
+    "ask_per_unit",
+    "ask_sek_per_fx",
+    "bid_sek_per_fx",
+    "ask_timestamp",
+    "bid_timestamp",
 ]
-
 
 
 def fetch_json(session, url, description):
@@ -61,38 +75,39 @@ def fetch_json(session, url, description):
         raise RuntimeError(f"Request failed while fetching {description}: {e}") from e
 
 
-def fetch_buy_rate(session, currency):
-    buy_url = (
+def fetch_bid_rate(session, currency):
+    """Hämta Nordeas köpkurs för `currency` uttryckt i SEK per 1 enhet.
+
+    Endpoint: basecurrency=<FX>, exchangecurrency=SEK
+        -> hur många SEK Nordea ger dig för 1 enhet av valutan.
+    """
+    bid_url = (
         "https://www.nordea.se/nd/api/dbf/ca/currencies-v2/open/exchange/"
         f"basecurrency/{currency}/exchangecurrency/SEK"
         "?country_code=se&markup=true"
     )
 
     try:
-        buy_payload = fetch_json(session, buy_url, f"buy rate for {currency}")
+        bid_payload = fetch_json(session, bid_url, f"bid rate for {currency}")
         return {
-            "buy_rate": buy_payload.get("show_rate"),
-            "buy_timestamp": buy_payload.get("timestamp"),
+            "bid_sek_per_fx": bid_payload.get("show_rate"),
+            "bid_timestamp": bid_payload.get("timestamp"),
         }
 
     except RuntimeError as e:
         print(f"Warning: {e}")
         return {
-            "buy_rate": None,
-            "buy_timestamp": None,
+            "bid_sek_per_fx": None,
+            "bid_timestamp": None,
         }
 
 
 def write_rows_to_csv(rows, output_file):
-    file_exists = output_file.exists()
-    file_is_empty = not file_exists or output_file.stat().st_size == 0
-
-    with output_file.open("a", newline="", encoding="utf-8") as f:
+    # Overwrite each run: the per-bank CSV is "today's snapshot".
+    # Intraday/historical accumulation lives in the rolling all_banks file.
+    with output_file.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-
-        if file_is_empty:
-            writer.writeheader()
-
+        writer.writeheader()
         writer.writerows(rows)
 
 
@@ -100,28 +115,38 @@ def nordea_scraper():
     output_file = get_dated_output_file("nordea_rates")
 
     with requests.Session() as session:
-        sell_payload = fetch_json(session, NORDEA_SELL_URL, "Nordea sell rates")
+        # Sälj-endpointen (basecurrency=SEK) ger alla säljkurser i ett svep:
+        # hur många SEK kunden betalar för 1 enhet av respektive valuta.
+        ask_payload = fetch_json(session, NORDEA_SELL_URL, "Nordea ask rates")
 
-        sell_rows = sell_payload.get("result", [])
-        if not sell_rows:
-            raise ValueError("Nordea sell endpoint returned no rows")
+        ask_rows = ask_payload.get("result", [])
+        if not ask_rows:
+            raise ValueError("Nordea ask endpoint returned no rows")
 
         combined_rows = []
 
-        for sell_item in sell_rows:
-            currency = sell_item.get("exchange_currency_code")
+        for ask_item in ask_rows:
+            currency = ask_item.get("exchange_currency_code")
             if not currency:
                 continue
 
-            buy_data = fetch_buy_rate(session, currency)
+            bid_data = fetch_bid_rate(session, currency)
+
+            ask_rate = ask_item.get("show_rate")
+            bid_rate = bid_data["bid_sek_per_fx"]
 
             combined_rows.append(
                 {
-                    "currency": currency,
-                    "sell_rate": sell_item.get("show_rate"),
-                    "buy_rate": buy_data["buy_rate"],
-                    "sell_timestamp": sell_item.get("timestamp"),
-                    "buy_timestamp": buy_data["buy_timestamp"],
+                    "pair": f"{currency}/SEK",
+                    "base_currency": currency,
+                    "quote_currency": "SEK",
+                    "quoted_per_units": 1,
+                    "bid_per_unit": bid_rate,
+                    "ask_per_unit": ask_rate,
+                    "ask_sek_per_fx": ask_rate,
+                    "bid_sek_per_fx": bid_rate,
+                    "ask_timestamp": ask_item.get("timestamp"),
+                    "bid_timestamp": bid_data["bid_timestamp"],
                 }
             )
 

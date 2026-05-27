@@ -20,12 +20,17 @@ DNB_URL = (
 FIELDNAMES = [
     "updated",
     "country",
-    "currency",
-    "unit",
+    "pair",
+    "base_currency",
+    "quote_currency",
+    "quoted_per_units",
+    "bid_per_unit",
+    "ask_per_unit",
     "buy_rate",
     "sell_rate",
     "change",
     "settlement_price",
+    "unit",
     "buy_rate_per_unit",
     "sell_rate_per_unit",
 ]
@@ -101,12 +106,21 @@ def parse_dnb_csv(text):
             {
                 "updated": updated,
                 "country": country,
-                "currency": currency,
-                "unit": unit_value,
+                "pair": f"{currency}/SEK",
+                "base_currency": currency,
+                "quote_currency": "SEK",
+                "quoted_per_units": int(unit_value) if unit_value == int(unit_value) else unit_value,
+                "bid_per_unit": (
+                    buy_value / unit_value if buy_value is not None else None
+                ),
+                "ask_per_unit": (
+                    sell_value / unit_value if sell_value is not None else None
+                ),
                 "buy_rate": buy_value,
                 "sell_rate": sell_value,
                 "change": change_value,
                 "settlement_price": settlement_price_value,
+                "unit": unit_value,
                 "buy_rate_per_unit": (
                     buy_value / unit_value if buy_value is not None else None
                 ),
