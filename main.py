@@ -1,11 +1,19 @@
-from scrapers.dnb import dnb_scraper
-from scrapers.nordea import nordea_scraper
+from scrapers import (
+    dnb_scraper,
+    nordea_scraper,
+    danske_bank_scraper,
+    seb_scraper,
+    handelsbanken_scraper,
+)
 
 
 def main():
     scrapers = [
         dnb_scraper,
         nordea_scraper,
+        danske_bank_scraper,
+        seb_scraper,
+        handelsbanken_scraper,
     ]
 
     for scraper in scrapers:
