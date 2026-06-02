@@ -1,8 +1,11 @@
 from csv import DictWriter
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+STOCKHOLM = ZoneInfo("Europe/Stockholm")
 
 
 # Tidy/long-format: en rad per (bank, valutapar, scrape).
@@ -86,8 +89,9 @@ class UnifiedRate:
 
 
 def now_iso():
-    """UTC-tidsstämpel i ISO 8601 med sekundprecision."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    """Tidsstämpel i svensk lokal tid (Europe/Stockholm), ISO 8601 med
+    sekundprecision. Hanterar sommar/vintertid automatiskt."""
+    return datetime.now(STOCKHOLM).replace(microsecond=0).isoformat()
 
 
 def write_unified_csv(rates, output_file: Path, append: bool = False):
