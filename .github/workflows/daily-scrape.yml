@@ -3,50 +3,55 @@ name: Daily FX Scrape
 on:
   # Stockholm 09:30 = 07:30 UTC in summer (CEST), 08:30 UTC in winter (CET).
   # GitHub Actions cron is UTC-only, so we trigger 07:30 UTC year-round.
-  # In winter (CET) the script will effectively run at 08:30 Stockholm time.
-  # Adjust to taste; banks usually publish rates by ~09:00 local time.
   schedule:
-    - cron: "00 12 * * *"
- # Lets you trigger the job manually from the Actions tab as well.
+    - cron: "30 9 * * *"
+
+  # Lets you trigger the job manually from the Actions tab as well.
   workflow_dispatch:
- 
+
 # Allow the workflow's GITHUB_TOKEN to push CSVs back to the repo.
 permissions:
   contents: write
- 
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
- 
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
- 
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
- 
+
       - name: Install Chrome
-        # Uses a maintained action that installs Chrome in seconds without
-        # the snap-package hang you get from `apt install chromium-browser`
-        # on Ubuntu 24.04.
         uses: browser-actions/setup-chrome@v1
- 
-      - name: Run scrapers
-        run: python main.py
- 
+
+      - name: Run scrapers (retry once after 15 min on failure)
+        # main.py exits non-zero if ANY scraper fails. nick-invision/retry then
+        # waits 15 minutes (900s) and runs it a second time. Two attempts total.
+        uses: nick-invision/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_wait_seconds: 900
+          command: python main.py
+
       - name: Commit and push new CSVs
+        # Runs whether or not the scrape ultimately succeeded, so we still save
+        # whatever data we did manage to collect. Remove if : always() if you only want to commit on full success.
+        if: always()
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add output/
-          # `git commit` exits 1 if there's nothing to commit; tolerate that.
-          git diff --cached --quiet || git commit -m "Daily FX scrape: $(date -u +%Y-%m-%d)"
+          git diff --cached --quiet || git commit -m "Daily FX scrape: $(date -u +%Y-%m-%d %H:%M)"
           git push

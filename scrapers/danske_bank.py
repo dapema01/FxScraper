@@ -14,10 +14,7 @@ from utils import get_dated_output_file
 
 
 DANSKE_URL = (
-    "https://online.danskebank.se/DK"
-    "?gsProdukt=INF&gsNextObj=Valuta&gsNextAkt=VFList0S"
-    "&gsSprog=SE&gsBrand=DB&FixingListegsCurItem=Init"
-    "&FixingListegsCurItem2=SESEK"
+    "https://online.danskebank.se/DK?gsProdukt=INF&gsNextObj=Valuta&gsNextAkt=VFList0S&gsSprog=SE&gsBrand=DB&FixingListegsCurItem=Init&FixingListegsCurItem2=SESEK"
 )
 
 

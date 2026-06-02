@@ -13,8 +13,7 @@ from utils import get_dated_output_file
 
 
 NORDEA_SELL_URL = (
-    "https://www.nordea.se/nd/api/dbf/ca/currencies-v2/open/exchange/"
-    "basecurrency/SEK?country_code=se&markup=true"
+    "https://www.nordea.se/nd/api/dbf/ca/currencies-v2/open/exchange/basecurrency/SEK?country_code=se&markup=true"
 )
 
 
@@ -82,9 +81,7 @@ def fetch_bid_rate(session, currency):
         -> hur många SEK Nordea ger dig för 1 enhet av valutan.
     """
     bid_url = (
-        "https://www.nordea.se/nd/api/dbf/ca/currencies-v2/open/exchange/"
-        f"basecurrency/{currency}/exchangecurrency/SEK"
-        "?country_code=se&markup=true"
+        f"https://www.nordea.se/nd/api/dbf/ca/currencies-v2/open/exchange/basecurrency/{currency}/exchangecurrency/SEK?country_code=se&markup=true"
     )
 
     try:

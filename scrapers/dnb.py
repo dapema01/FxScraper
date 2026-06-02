@@ -13,8 +13,7 @@ from utils import get_dated_output_file
 
 
 DNB_URL = (
-    "https://www.dnb.se/portalfront/datafiles/miscellaneous/csv/"
-    "kursliste_over_SEK.csv?_=1774742606760"
+    "https://www.dnb.se/portalfront/datafiles/miscellaneous/csv/kursliste_over_SEK.csv?_=1774742606760"
 )
 
 FIELDNAMES = [

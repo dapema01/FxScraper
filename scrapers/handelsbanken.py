@@ -14,14 +14,7 @@ from utils import get_dated_output_file
 
 
 HANDELSBANKEN_URL = (
-    "https://mws-2.millistream.com/mws.fcgi"
-    "?cmd=quote"
-    "&fields=name,insref,lastprice,diff1dprc,dayhighprice,daylowprice,"
-    "diff1mprc,diffytdprc,diff1yprc,lastprice,bidprice,askprice,"
-    "lowpriceytd,highpriceytd,factor"
-    "&insref=926,150,72825,117083,72829,72828,72826,51623,117438,117521"
-    "&filetype=json&lang=en"
-    "&token=98d5ae3f-db2c-47ff-af03-b8cd1155d503"
+    "https://mws-2.millistream.com/mws.fcgi?cmd=quote&fields=name,insref,lastprice,diff1dprc,dayhighprice,daylowprice,diff1mprc,diffytdprc,diff1yprc,lastprice,bidprice,askprice,lowpriceytd,highpriceytd,factor&insref=926,150,72825,117083,72829,72828,72826,51623,117438,117521&filetype=json&lang=en&token=98d5ae3f-db2c-47ff-af03-b8cd1155d503"
 )
 
 

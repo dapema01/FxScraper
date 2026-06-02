@@ -5,17 +5,18 @@ from pathlib import Path
 from typing import Optional
 
 
-# Tidy/long format: one row per (bank, currency_pair, scrape).
-# This shape is what plotting and time-series tools (pandas, seaborn,
-# plotly) expect. Adding a new bank means more rows, not more columns.
+# Tidy/long-format: en rad per (bank, valutapar, scrape).
+# Den här formen är vad plottnings- och tidsserieverktyg (pandas, seaborn,
+# plotly) förväntar sig. Att lägga till en ny bank ger fler rader, inte
+# fler kolumner.
 #
-# Rate column conventions:
-#   bid/ask/mid/spread   -> normalized to quote_currency per 1 unit of base_currency
-#                           (comparable across banks).
-#   raw_bid/raw_ask      -> per `raw_quoted_per_units` units of base_currency,
-#                           exactly as the bank publishes. Useful for traceability
-#                           and reproducing the bank's own number.
-#   raw_quoted_per_units -> the multiplier the bank quotes in (1 or 100).
+# Konventioner för kurskolumner:
+#   bid/ask/mid/spread   -> normaliserade till quote_currency per 1 enhet av base_currency
+#                           (jämförbara mellan banker).
+#   raw_bid/raw_ask      -> per `raw_quoted_per_units` enheter av base_currency,
+#                           exakt som banken publicerar. Användbart för spårbarhet
+#                           och för att återskapa bankens eget tal.
+#   raw_quoted_per_units -> multiplikatorn banken noterar i (1 eller 100).
 UNIFIED_FIELDNAMES = [
     "scraped_at",
     "bank",
@@ -36,22 +37,23 @@ UNIFIED_FIELDNAMES = [
 
 @dataclass
 class UnifiedRate:
-    """A single FX observation in the project's canonical shape.
+    """En enskild FX-observation i projektets kanoniska form.
 
-    Conventions:
-        - bid: the rate at which the bank BUYS base_currency from a customer
-               (lower number).
-        - ask: the rate at which the bank SELLS base_currency to a customer
-               (higher number).
-        - bid/ask/mid/spread are quoted as quote_currency per 1 unit of
-          base_currency, always. If the bank published "5.82 SEK per 100 JPY",
-          we store bid/ask as 0.0582 and put 5.82 in raw_bid/raw_ask with
+    Konventioner:
+        - bid: kursen som banken KÖPER base_currency för från en kund
+               (lägre tal).
+        - ask: kursen som banken SÄLJER base_currency för till en kund
+               (högre tal).
+        - bid/ask/mid/spread noteras alltid som quote_currency per 1 enhet
+          av base_currency. Om banken publicerade "5.82 SEK per 100 JPY"
+          lagrar vi bid/ask som 0.0582 och lägger 5.82 i raw_bid/raw_ask med
           raw_quoted_per_units=100.
-        - pair is auto-built as f"{base_currency}/{quote_currency}" if not set
-          explicitly. All five banks currently produce <FX>/SEK pairs.
-        - scraped_at is the canonical time axis for plotting (always set,
-          always comparable across banks). rate_date is best-effort from
-          the bank itself and may be missing or in an odd format.
+        - pair byggs automatiskt som f"{base_currency}/{quote_currency}" om
+          den inte sätts explicit. Alla fem bankerna producerar för
+          närvarande <FX>/SEK-par.
+        - scraped_at är den kanoniska tidsaxeln för plottning (sätts alltid,
+          alltid jämförbar mellan banker). rate_date är ett bästa-möjliga-
+          värde från banken själv och kan saknas eller ha ett udda format.
     """
 
     scraped_at: str
@@ -70,12 +72,12 @@ class UnifiedRate:
     source_bank_label: Optional[str] = None
 
     def __post_init__(self):
-        # Auto-build the pair label so adapters never need to spell it out.
+        # Bygg par-etiketten automatiskt så att adaptrarna aldrig behöver stava ut den.
         if self.pair is None and self.base_currency and self.quote_currency:
             self.pair = f"{self.base_currency}/{self.quote_currency}"
 
-        # Auto-fill mid and spread from bid/ask when not provided.
-        # Round to 6 decimals — enough precision for FX rates, kills float noise.
+        # Fyll i mid och spread automatiskt från bid/ask när de inte angetts.
+        # Avrunda till 6 decimaler — tillräcklig precision för FX-kurser, dödar float-brus.
         if self.bid is not None and self.ask is not None:
             if self.mid is None:
                 self.mid = round((self.bid + self.ask) / 2, 6)
@@ -84,18 +86,18 @@ class UnifiedRate:
 
 
 def now_iso():
-    """UTC timestamp in ISO 8601 with seconds precision."""
+    """UTC-tidsstämpel i ISO 8601 med sekundprecision."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def write_unified_csv(rates, output_file: Path, append: bool = False):
-    """Write a list of UnifiedRate objects to a CSV file.
+    """Skriv en lista av UnifiedRate-objekt till en CSV-fil.
 
     Args:
-        rates: iterable of UnifiedRate instances.
-        output_file: destination path. Parent dir must exist.
-        append: if True, append and skip the header when the file already has
-                content. If False (default), overwrite.
+        rates: itererbar av UnifiedRate-instanser.
+        output_file: målsökväg. Föräldrakatalogen måste finnas.
+        append: om True, lägg till och hoppa över rubriken när filen redan
+                har innehåll. Om False (standard), skriv över.
     """
     output_file = Path(output_file)
     mode = "a" if append else "w"
@@ -112,7 +114,7 @@ def write_unified_csv(rates, output_file: Path, append: bool = False):
 
         for rate in rates:
             row = asdict(rate)
-            # Guard against extra fields if the dataclass ever grows.
+            # Skydda mot extra fält om dataklassen någonsin växer.
             writer.writerow({k: row.get(k) for k in UNIFIED_FIELDNAMES})
 
     return output_file
