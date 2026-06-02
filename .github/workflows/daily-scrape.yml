@@ -4,7 +4,7 @@ on:
   # Stockholm 09:30 = 07:30 UTC in summer (CEST), 08:30 UTC in winter (CET).
   # GitHub Actions cron is UTC-only, so we trigger 07:30 UTC year-round.
   schedule:
-    - cron: "00 9 * * *"
+    - cron: "30 7 * * *"
 
   # Lets you trigger the job manually from the Actions tab as well.
   workflow_dispatch:
