@@ -9,7 +9,8 @@ from scrapers import (
     danske_bank_scraper,
     seb_scraper,
     handelsbanken_scraper,
-    swedbank_scraper
+    swedbank_scraper,
+    swedbank_private_scraper
 )
 from scrapers._adapters import (
     from_dnb_rows,
@@ -17,7 +18,8 @@ from scrapers._adapters import (
     from_seb_rows,
     from_danske_bank_rows,
     from_handelsbanken_rows,
-    from_swedbank_rows
+    from_swedbank_rows,
+    from_swedbank_private_rows
 )
 from utils import (
     UNIFIED_FIELDNAMES,
@@ -33,12 +35,13 @@ from utils import (
 #   den banken så att vi bara behåller den senaste dagen på disk (speglar
 #   det rullande all_banks-beteendet).
 SCRAPER_PIPELINE = [
-    (dnb_scraper,           from_dnb_rows,          "dnb_rates"),
-    (nordea_scraper,        from_nordea_rows,       "nordea_rates"),
-    (seb_scraper,           from_seb_rows,          "seb_rates"),
-    (danske_bank_scraper,   from_danske_bank_rows,  "danske_bank_rates"),
-    (handelsbanken_scraper, from_handelsbanken_rows,"handelsbanken_rates"),
-    (swedbank_scraper, from_swedbank_rows, "swedbank_rates")
+    (dnb_scraper,               from_dnb_rows,              "dnb_rates"),
+    (nordea_scraper,            from_nordea_rows,           "nordea_rates"),
+    (seb_scraper,               from_seb_rows,              "seb_rates"),
+    (danske_bank_scraper,       from_danske_bank_rows,      "danske_bank_rates"),
+    (handelsbanken_scraper,     from_handelsbanken_rows,    "handelsbanken_rates"),
+    (swedbank_scraper,          from_swedbank_rows,         "swedbank_rates"),
+    (swedbank_private_scraper,  from_swedbank_private_rows, "swwedbank_private_rates")
 ]
 
 

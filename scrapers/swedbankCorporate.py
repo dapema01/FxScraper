@@ -14,8 +14,7 @@ from utils import get_dated_output_file
 
 
 SWEDBANK_URL = (
-    "https://www.swedbank.se/foretag/rantor-priser-och-kurser/"
-    "valutakurser-betalningar.html"
+    "https://www.swedbank.se/foretag/rantor-priser-och-kurser/valutakurser-betalningar.html"
 )
 
 

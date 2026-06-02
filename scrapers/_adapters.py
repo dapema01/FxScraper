@@ -197,24 +197,35 @@ def from_seb_rows(raw_rows: Iterable[dict], scraped_at: Optional[str] = None) ->
     return out
 
 
-def from_swedbank_rows(raw_rows: Iterable[dict], scraped_at: Optional[str] = None) -> List[UnifiedRate]:
+def from_swedbank_rows(
+    raw_rows: Iterable[dict],
+    scraped_at: Optional[str] = None,
+    bank: str = "Swedbank",
+) -> List[UnifiedRate]:
+    """Adaptera Swedbanks råa rader till det enhetliga schemat.
+ 
+    `bank` låter samma normaliseringslogik återanvändas för både företags-
+    och privatkurser; privat-pipen anropar via `from_swedbank_private_rows`
+    nedan, som bara byter etikett. Allt annat (per-enhet-noteringen,
+    bid/ask-konventionen, datumnormaliseringen) är identiskt.
+    """
     scraped_at = scraped_at or now_iso()
     out = []
-
+ 
     for row in raw_rows:
         base = row.get("base_currency") or row.get("currency")
         if not base:
             continue
-
+ 
         # Swedbank noterar per 1 enhet, så råkurserna är redan per enhet.
         quoted_per_units = _to_int(row.get("quoted_per_units")) or 1
         bid = _to_float(row.get("sell_rate"))
         ask = _to_float(row.get("buy_rate"))
-
+ 
         out.append(
             UnifiedRate(
                 scraped_at=scraped_at,
-                bank="Swedbank",
+                bank=bank,
                 base_currency=base,
                 quote_currency=row.get("quote_currency") or "SEK",
                 bid=bid,
@@ -226,8 +237,25 @@ def from_swedbank_rows(raw_rows: Iterable[dict], scraped_at: Optional[str] = Non
                 source_bank_label=row.get("country"),
             )
         )
-
+ 
     return out
+
+def from_swedbank_private_rows(
+    raw_rows: Iterable[dict], scraped_at: Optional[str] = None
+) -> List[UnifiedRate]:
+    """Privatvariant av Swedbank-adaptern.
+ 
+    Swedbanks privatkurser har exakt samma kolumnstruktur som företagssidan,
+    så vi delegerar all normalisering till `from_swedbank_rows` och byter
+    bara bank-etiketten till "Swedbank (Privat)" så att privat- och
+    företagsrader kan särskiljas i en gemensam datamängd.
+    """
+    return from_swedbank_rows(
+        raw_rows, scraped_at=scraped_at, bank="Swedbank (Privat)"
+    )
+ 
+ 
+
 
 
 def from_danske_bank_rows(raw_rows: Iterable[dict], scraped_at: Optional[str] = None) -> List[UnifiedRate]:
