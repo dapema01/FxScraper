@@ -1,3 +1,4 @@
+<<<<<<<< HEAD:output/all_banks_2026-06-02.csv
 scraped_at,bank,pair,base_currency,quote_currency,bid,ask,mid,spread,raw_bid,raw_ask,raw_quoted_per_units,rate_date,source_bank_label
 2026-05-27T15:04:49+00:00,DNB,NOK/SEK,NOK,SEK,0.9919,1.0059,0.9989,0.014,99.19,100.59,100,2026-05-27,Norge
 2026-05-27T15:04:49+00:00,DNB,USD/SEK,USD,SEK,9.2241,9.3301,9.2771,0.106,9.2241,9.3301,1,2026-05-27,USA
@@ -1049,3 +1050,4 @@ scraped_at,bank,pair,base_currency,quote_currency,bid,ask,mid,spread,raw_bid,raw
 2026-06-02T09:02:43+00:00,Swedbank,TRY/SEK,TRY,SEK,0.1992,0.2044,0.2018,0.0052,0.1992,0.2044,1,2026-06-02,Turkiet
 2026-06-02T09:02:43+00:00,Swedbank,HUF/SEK,HUF,SEK,0.0301,0.0309,0.0305,0.0008,0.0301,0.0309,1,2026-06-02,Ungern
 2026-06-02T09:02:43+00:00,Swedbank,USD/SEK,USD,SEK,9.2096,9.3459,9.27775,0.1363,9.2096,9.3459,1,2026-06-02,USA
+
