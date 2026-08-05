@@ -48,14 +48,17 @@ from utils import (
 )
 
 
+# Varje post: (scraper_callable, adapter_callable).
+# - Scrapern returnerar råa rad-dictar direkt (ingen per-bank-CSV skrivs).
+# - Adaptern översätter dem till UnifiedRate-objekt.
 SCRAPER_PIPELINE = [
-    (dnb_scraper,               from_dnb_rows,              "dnb_rates"),
-    (nordea_scraper,            from_nordea_rows,           "nordea_rates"),
-    (seb_scraper,               from_seb_rows,              "seb_rates"),
-    (danske_bank_scraper,       from_danske_bank_rows,      "danske_bank_rates"),
-    (handelsbanken_scraper,     from_handelsbanken_rows,    "handelsbanken_rates"),
-    (swedbank_scraper,          from_swedbank_rows,         "swedbank_rates"),
-    (swedbank_private_scraper,  from_swedbank_private_rows, "swedbank_private_rates")
+    (dnb_scraper,               from_dnb_rows),
+    (nordea_scraper,            from_nordea_rows),
+    (seb_scraper,               from_seb_rows),
+    (danske_bank_scraper,       from_danske_bank_rows),
+    (handelsbanken_scraper,     from_handelsbanken_rows),
+    (swedbank_scraper,          from_swedbank_rows),
+    (swedbank_private_scraper,  from_swedbank_private_rows)
 ]
 
 
@@ -94,18 +97,6 @@ def _write_unified(rows: list[dict], path: Path) -> None:
             writer.writerow({k: row.get(k) for k in UNIFIED_FIELDNAMES})
 
 
-def _sweep_old_per_bank_files(output_dir: Path, prefix: str, keep: Path) -> None:
-    """Radera varje <prefix>*.csv i output_dir utom `keep`.
-
-    Anropas efter att en scraper lyckats, så vi raderar aldrig den
-    föregående filen förrän vi bekräftat att en ny finns.
-    """
-    for old in output_dir.glob(f"{prefix}*.csv"):
-        if old != keep:
-            old.unlink()
-            print(f"  Removed older per-bank file: {old.name}")
-
-
 def main():
     scraped_at = now_iso()
     month = scraped_at[:7]  # "ÅÅÅÅ-MM" -> månadsbucket
@@ -114,15 +105,9 @@ def main():
     failures: list[str] = []
     output_dir = get_output_dir()
 
-    for scraper, adapter, per_bank_prefix in SCRAPER_PIPELINE:
+    for scraper, adapter in SCRAPER_PIPELINE:
         try:
-            output_file = scraper()
-            print(f"Finished: {scraper.__name__} -> {output_file}")
-
-            # Per-bank-rullning: behåll bara filen vi precis skrev.
-            _sweep_old_per_bank_files(output_dir, per_bank_prefix, keep=output_file)
-
-            raw_rows = _read_csv_rows(output_file)
+            raw_rows = scraper()
             unified = adapter(raw_rows, scraped_at=scraped_at)
             new_rows.extend(asdict(u) for u in unified)
             print(f"  Normalized: {len(unified)} rows from {scraper.__name__}")
