@@ -41,7 +41,7 @@ SCRAPER_PIPELINE = [
     (danske_bank_scraper,       from_danske_bank_rows,      "danske_bank_rates"),
     (handelsbanken_scraper,     from_handelsbanken_rows,    "handelsbanken_rates"),
     (swedbank_scraper,          from_swedbank_rows,         "swedbank_rates"),
-    (swedbank_private_scraper,  from_swedbank_private_rows, "swwedbank_private_rates")
+    (swedbank_private_scraper,  from_swedbank_private_rows, "swedbank_private_rates")
 ]
 
 
