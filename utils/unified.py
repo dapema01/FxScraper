@@ -20,6 +20,8 @@ STOCKHOLM = ZoneInfo("Europe/Stockholm")
 #                           exakt som banken publicerar. Användbart för spårbarhet
 #                           och för att återskapa bankens eget tal.
 #   raw_quoted_per_units -> multiplikatorn banken noterar i (1 eller 100).
+#   weekend_flag         -> 1 om scraped_at infaller på en lördag/söndag, annars 0.
+#                           Härleds från scraped_at (se UnifiedRate.__post_init__).
 UNIFIED_FIELDNAMES = [
     "scraped_at",
     "bank",
@@ -35,7 +37,23 @@ UNIFIED_FIELDNAMES = [
     "raw_quoted_per_units",
     "rate_date",
     "source_bank_label",
+    "weekend_flag",
 ]
+
+
+def _weekend_flag_from_iso(scraped_at: Optional[str]) -> int:
+    """1 om ISO-tidsstämpeln `scraped_at` är lör/sön, annars 0.
+
+    Tomt eller oparsbart värde ger 0.
+    """
+    if not scraped_at:
+        return 0
+    try:
+        dt = datetime.fromisoformat(scraped_at.strip())
+    except ValueError:
+        return 0
+    # weekday(): måndag=0 ... lördag=5, söndag=6.
+    return 1 if dt.weekday() >= 5 else 0
 
 
 @dataclass
@@ -57,6 +75,8 @@ class UnifiedRate:
         - scraped_at är den kanoniska tidsaxeln för plottning (sätts alltid,
           alltid jämförbar mellan banker). rate_date är ett bästa-möjliga-
           värde från banken själv och kan saknas eller ha ett udda format.
+        - weekend_flag härleds från scraped_at (1 på lör/sön, annars 0) om
+          den inte sätts explicit.
     """
 
     scraped_at: str
@@ -73,6 +93,7 @@ class UnifiedRate:
     raw_quoted_per_units: Optional[int] = None
     rate_date: Optional[str] = None
     source_bank_label: Optional[str] = None
+    weekend_flag: Optional[int] = None
 
     def __post_init__(self):
         # Bygg par-etiketten automatiskt så att adaptrarna aldrig behöver stava ut den.
@@ -86,6 +107,10 @@ class UnifiedRate:
                 self.mid = round((self.bid + self.ask) / 2, 6)
             if self.spread is None:
                 self.spread = round(self.ask - self.bid, 6)
+
+        # Härled helgflaggan från scraped_at när den inte angetts explicit.
+        if self.weekend_flag is None:
+            self.weekend_flag = _weekend_flag_from_iso(self.scraped_at)
 
 
 def now_iso():
