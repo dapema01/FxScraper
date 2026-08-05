@@ -31,17 +31,12 @@ SWEDBANK_PRIVATE_URL = (
 
 
 def swedbank_private_scraper():
-    output_file = get_dated_output_file("swedbank_private_rates")
-
     text = fetch_html(SWEDBANK_PRIVATE_URL)
-    rows = parse_swedbank_html(text)
+    return parse_swedbank_html(text)
 
-    write_rows_to_csv(rows, output_file)
-
-    print(f"Swedbank PRIVATE rates saved to {output_file}")
-
-    return output_file
 
 
 if __name__ == "__main__":
-    swedbank_private_scraper()
+    output_file = get_dated_output_file("swedbank_private_rates")
+    write_rows_to_csv(swedbank_private_scraper(), output_file)
+    print(f"Swedbank Private rates saved to {output_file}")

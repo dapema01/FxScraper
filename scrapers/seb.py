@@ -124,23 +124,15 @@ def _scrape_seb(driver: Driver, data):
 
 
 def seb_scraper():
-    output_file = get_dated_output_file("seb_rates")
-
     text = _scrape_seb()
-
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Could not parse SEB response as JSON: {e}") from e
-
-    rows = parse_seb_payload(payload)
-
-    write_rows_to_csv(rows, output_file)
-
-    print(f"SEB rates saved to {output_file}")
-
-    return output_file
+    return parse_seb_payload(payload)
 
 
 if __name__ == "__main__":
-    seb_scraper()
+    output_file = get_dated_output_file("seb_rates")
+    write_rows_to_csv(seb_scraper(), output_file)
+    print(f"SEB rates saved to {output_file}")

@@ -137,17 +137,11 @@ def write_rows_to_csv(rows, output_file):
 
 
 def swedbank_scraper():
-    output_file = get_dated_output_file("swedbank_rates")
-
     text = fetch_html(SWEDBANK_URL)
-    rows = parse_swedbank_html(text)
-
-    write_rows_to_csv(rows, output_file)
-
-    print(f"Swedbank rates saved to {output_file}")
-
-    return output_file
+    return parse_swedbank_html(text)
 
 
 if __name__ == "__main__":
-    swedbank_scraper()
+    output_file = get_dated_output_file("swedbank_rates")
+    write_rows_to_csv(swedbank_scraper(), output_file)
+    print(f"Swedbank Corporate rates saved to {output_file}")

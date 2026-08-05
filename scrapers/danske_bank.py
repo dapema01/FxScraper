@@ -99,20 +99,13 @@ def _scrape_danske(driver: Driver, data):
 
 
 def danske_bank_scraper():
-    output_file = get_dated_output_file("danske_bank_rates")
-
     html = _scrape_danske()
     if not html:
         raise RuntimeError("Danske Bank returned no HTML")
-
-    rows = parse_danske_html(html)
-
-    write_rows_to_csv(rows, output_file)
-
-    print(f"Danske Bank rates saved to {output_file}")
-
-    return output_file
+    return parse_danske_html(html)
 
 
 if __name__ == "__main__":
-    danske_bank_scraper()
+    output_file = get_dated_output_file("danske_bank_rates")
+    write_rows_to_csv(danske_bank_scraper(), output_file)
+    print(f"DNB rates saved to {output_file}")

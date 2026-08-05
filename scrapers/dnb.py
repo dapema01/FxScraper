@@ -143,17 +143,12 @@ def write_rows_to_csv(rows, output_file):
 
 
 def dnb_scraper():
-    output_file = get_dated_output_file("dnb_rates")
-
     text = fetch_csv_text(DNB_URL)
-    rows = parse_dnb_csv(text)
+    return parse_dnb_csv(text)
 
-    write_rows_to_csv(rows, output_file)
-
-    print(f"DNB rates saved to {output_file}")
-
-    return output_file
 
 
 if __name__ == "__main__":
-    dnb_scraper()
+    output_file = get_dated_output_file("dnb_rates")
+    write_rows_to_csv(dnb_scraper(), output_file)
+    print(f"DNB rates saved to {output_file}")

@@ -149,13 +149,10 @@ def nordea_scraper():
 
     if not combined_rows:
         raise ValueError("No usable Nordea rows found")
-
-    write_rows_to_csv(combined_rows, output_file)
-
-    print(f"Nordea rates saved to {output_file}")
-
-    return output_file
+    return combined_rows
 
 
 if __name__ == "__main__":
-    nordea_scraper()
+    output_file = get_dated_output_file("nordea_rates")
+    write_rows_to_csv(nordea_scraper(), output_file)
+    print(f"Nordea rates saved to {output_file}")

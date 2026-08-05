@@ -129,25 +129,15 @@ def _scrape_handelsbanken(driver: Driver, data):
 
 
 def handelsbanken_scraper():
-    output_file = get_dated_output_file("handelsbanken_rates")
-
     text = _scrape_handelsbanken()
-
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as e:
-        raise RuntimeError(
-            f"Could not parse Handelsbanken response as JSON: {e}"
-        ) from e
-
-    rows = parse_handelsbanken_payload(payload)
-
-    write_rows_to_csv(rows, output_file)
-
-    print(f"Handelsbanken rates saved to {output_file}")
-
-    return output_file
+        raise RuntimeError(f"Could not parse Handelsbanken response as JSON: {e}") from e
+    return parse_handelsbanken_payload(payload)
 
 
 if __name__ == "__main__":
-    handelsbanken_scraper()
+    output_file = get_dated_output_file("handelsbanken_rates")
+    write_rows_to_csv(handelsbanken_scraper(), output_file)
+    print(f"Handelsbanken rates saved to {output_file}")
