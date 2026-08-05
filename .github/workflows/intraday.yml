@@ -1,0 +1,72 @@
+name: Intraday FX rates
+
+on:
+  schedule:
+    # GitHub cron körs i UTC och stödjer inte tidszoner.
+    # 06/11/16 UTC ≈ 08/13/18 i Stockholm under sommartid (UTC+2).
+    # Under vintertid (UTC+1) blir det 07/12/17 lokal tid.
+    #
+    # Minuten är medvetet satt till :23, inte :00. GitHub fördröjer/hoppar
+    # över schemalagda körningar vid belastningstoppar, som är värst vid
+    # heltimmen — en udda minut minskar risken. Schemat är ändå best-effort;
+    # räkna med att starttiden kan glida en bit.
+    - cron: '23 6,11,16 * * *'
+  workflow_dispatch: {}   # tillåt manuell körning från Actions-fliken
+
+# Låt aldrig två körningar överlappa — de delar per-bank-scratchfiler och
+# skriver till samma månadsfil.
+concurrency:
+  group: intraday
+  cancel-in-progress: false
+
+# Behövs för att kunna committa tillbaka output-filerna till repot.
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (inklusive tidigare output)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install botasaurus beautifulsoup4 requests
+          fi
+
+      - name: Run intraday scraper
+        id: scrape
+        continue-on-error: true   # persistera ändå det som hann scrapas
+        run: python intraday.py
+
+      - name: Commit & push output
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --cached --quiet; then
+            echo "Inga ändringar att committa."
+          else
+            git commit -m "Intraday FX rates ($(date -u +%FT%TZ)) [run ${{ github.run_id }}]"
+            # Rebasa mot ev. commit från en tidigare körning innan push.
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push
+          fi
+
+      - name: Surface scraper failure
+        if: steps.scrape.outcome == 'failure'
+        run: |
+          echo "En eller flera scrapers misslyckades (se loggen ovan)."
+          exit 1
