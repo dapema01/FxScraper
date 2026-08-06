@@ -53,7 +53,7 @@ jobs:
           timeout_minutes: 20
           max_attempts: 3
           retry_wait_seconds: 900
-          command: python intraday.py
+          command: python Intraday.py
 
       - name: Commit and push new CSVs
         # Runs whether or not the scrape ultimately succeeded, so we still save
