@@ -1,56 +1,63 @@
-name: Intraday FX rates
+name: Intraday FX Scrape
 
 on:
+  # Stockholm 08/13/18 lokal tid. GitHub-cron är UTC-only, så vi kör
+  # 06/11/16 UTC (≈ 08/13/18 CEST på sommaren, 07/12/17 CET på vintern).
+  # Minuten är :23, inte :00 — schemalagda körningar glider/hoppas oftast
+  # vid heltimmen, en udda minut minskar risken. Ändå best-effort.
   schedule:
-    # GitHub cron körs i UTC och stödjer inte tidszoner.
-    # 06/11/16 UTC ≈ 08/13/18 i Stockholm under sommartid (UTC+2).
-    # Under vintertid (UTC+1) blir det 07/12/17 lokal tid.
-    #
-    # Minuten är medvetet satt till :23, inte :00. GitHub fördröjer/hoppar
-    # över schemalagda körningar vid belastningstoppar, som är värst vid
-    # heltimmen — en udda minut minskar risken. Schemat är ändå best-effort;
-    # räkna med att starttiden kan glida en bit.
-    - cron: '23 6,11,16 * * *'
-  workflow_dispatch: {}   # tillåt manuell körning från Actions-fliken
+    - cron: "23 6,11,16 * * *"
 
-# Låt aldrig två körningar överlappa — de delar per-bank-scratchfiler och
-# skriver till samma månadsfil.
-concurrency:
-  group: intraday
-  cancel-in-progress: false
+  # Låter dig köra manuellt från Actions-fliken.
+  workflow_dispatch:
 
-# Behövs för att kunna committa tillbaka output-filerna till repot.
+# Låt workflowens GITHUB_TOKEN pusha tillbaka CSV:erna till repot.
 permissions:
   contents: write
+
+# Låt aldrig två körningar överlappa — de skriver till samma månadsfil.
+concurrency:
+  group: intraday-fx-scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (inklusive tidigare output)
+      - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          # Full historik så att git pull --rebase har något att jobba mot.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: pip
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            pip install botasaurus beautifulsoup4 requests
-          fi
+          pip install -r requirements.txt
 
-      - name: Run intraday scraper
-        id: scrape
-        continue-on-error: true   # persistera ändå det som hann scrapas
-        run: python intraday.py
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
 
-      - name: Commit & push output
+      - name: Run intraday scraper (retry once after 15 min on failure)
+        # intraday.py exits non-zero if ANY scraper fails. nick-invision/retry
+        # then waits 15 minutes (900s) and runs it again — up to 3 attempts.
+        uses: nick-invision/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_wait_seconds: 900
+          command: python intraday.py
+
+      - name: Commit and push new CSVs
+        # Runs whether or not the scrape ultimately succeeded, so we still save
+        # whatever data we did manage to collect.
         if: always()
         run: |
           git config user.name  "github-actions[bot]"
@@ -59,14 +66,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Inga ändringar att committa."
           else
-            git commit -m "Intraday FX rates ($(date -u +%FT%TZ)) [run ${{ github.run_id }}]"
-            # Rebasa mot ev. commit från en tidigare körning innan push.
-            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git commit -m "Intraday FX scrape: $(date -u '+%Y-%m-%d %H:%M')"
+            git pull --rebase --autostash origin "${{ github.ref_name }}"
             git push
           fi
-
-      - name: Surface scraper failure
-        if: steps.scrape.outcome == 'failure'
-        run: |
-          echo "En eller flera scrapers misslyckades (se loggen ovan)."
-          exit 1
