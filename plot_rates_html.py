@@ -68,7 +68,7 @@ weekend_buttons = [
 
 fig.update_layout(
     title="FX-spread (% av mid) per bank",
-    xaxis_title="Skrapningstid", yaxis_title="Spread (%)",
+    xaxis_title="Datum", yaxis_title="Spread (%)",
     hovermode="closest",
     updatemenus=[
         dict(buttons=pair_buttons, x=0.0, y=1.15, xanchor="left"),
