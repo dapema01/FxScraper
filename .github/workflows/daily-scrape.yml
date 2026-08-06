@@ -52,7 +52,7 @@ jobs:
 
       - name: Build plot
         if: always()
-        run: python plot.py
+        run: python plot_rates_html.py
 
       - name: Commit and push CSVs + HTML
         if: always()
