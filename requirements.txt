@@ -1,3 +1,5 @@
 botasaurus
 beautifulsoup4
 requests
+pandas
+plotly

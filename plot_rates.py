@@ -1,111 +1,99 @@
-"""Plot FX rates over time from the rolling all_banks_*.csv file.
-
-Opens an interactive matplotlib window showing each bank's mid rate for a
-chosen currency pair over time (x-axis = scraped_at).
-
-Usage:
-    python plot_rates.py                # defaults to USD/SEK
-    python plot_rates.py EUR            # plot EUR/SEK
-    python plot_rates.py JPY/SEK        # full pair also accepted
-    python plot_rates.py --list         # list available currencies and exit
-
-Requires: pandas, matplotlib
-    pip install pandas matplotlib
-"""
-
-import sys
 from pathlib import Path
-
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import mplcursors
 import pandas as pd
+from matplotlib.widgets import CheckButtons, RadioButtons
 
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"  # justera vid behov
+ALL_BANKS_PREFIX = "all_banks_"
+ALLOWED_PAIRS = ["USD/SEK", "EUR/SEK", "GBP/SEK"]
 
-OUTPUT_DIR = Path(__file__).resolve().parent / "output"
-ALL_BANKS_GLOB = "all_banks_*.csv"
-
-
-def find_latest_all_banks(output_dir: Path) -> Path:
-    candidates = sorted(output_dir.glob(ALL_BANKS_GLOB))
+def latest_all_banks_file(output_dir: Path) -> Path:
+    candidates = sorted(output_dir.glob(f"{ALL_BANKS_PREFIX}*.csv"))
     if not candidates:
-        raise FileNotFoundError(
-            f"No {ALL_BANKS_GLOB} found in {output_dir}. "
-            "Run main.py first to generate data."
-        )
-    # ISO dates sort lexically; the last one is the most recent.
+        raise FileNotFoundError(f"Ingen {ALL_BANKS_PREFIX}*.csv i {output_dir}")
     return candidates[-1]
 
+path = latest_all_banks_file(OUTPUT_DIR)
+print(f"Ritar {path.name}")
+df = pd.read_csv(path, parse_dates=["scraped_at"])
 
-def normalize_pair(arg: str) -> str:
-    """Accept 'EUR', 'eur', 'EUR/SEK' and return a canonical 'EUR/SEK'."""
-    arg = arg.strip().upper()
-    if "/" in arg:
-        return arg
-    return f"{arg}/SEK"
+df = df[df["pair"].isin(ALLOWED_PAIRS)]
+df["spread_pct"] = df["spread"] / df["mid"] * 100
 
+pairs = [p for p in ALLOWED_PAIRS if p in df["pair"].unique()]
+state = {"pair": pairs[0], "hide_weekends": False, "cursor": None}
 
-def load_data(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce")
-    df = df.dropna(subset=["scraped_at"])
-    return df
+fig, ax = plt.subplots(figsize=(11, 6))
+plt.subplots_adjust(left=0.28, right=0.98)
 
+def redraw():
+    if state["cursor"] is not None:
+        state["cursor"].remove()
 
-def plot_pair(df: pd.DataFrame, pair: str) -> None:
-    subset = df[df["pair"] == pair].copy()
-    if subset.empty:
-        available = ", ".join(sorted(df["pair"].dropna().unique()))
-        raise ValueError(
-            f"No data for pair '{pair}'.\nAvailable pairs: {available}"
-        )
+    ax.clear()
+    # Streckat rutnät i bakgrunden (bakom datapunkterna)
+    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
+    ax.set_axisbelow(True)
 
-    # One line per bank: mid rate over time. Sort so lines connect in order.
-    subset = subset.sort_values("scraped_at")
+    sub = df[df["pair"] == state["pair"]].sort_values("scraped_at")
+    scatters = []
+    for bank, g in sub.groupby("bank"):
+        g = g.reset_index(drop=True)  # positionsindex matchar scatterns punkter
+        y = g["spread_pct"]
+        if state["hide_weekends"]:
+            y = y.where(g["weekend_flag"] == 0)
+        if y.notna().sum() == 0:
+            continue  # hoppa över banker utan spread (t.ex. Handelsbanken)
 
-    fig, ax = plt.subplots(figsize=(11, 6))
+        (line,) = ax.plot(g["scraped_at"], y, linewidth=1)
+        sc = ax.scatter(g["scraped_at"], y, s=30, color=line.get_color(), label=bank)
+        sc.bank_label = bank
+        sc.rows = g  # spara raderna för uppslag i tooltip
+        scatters.append(sc)
 
-    for bank, group in subset.groupby("bank"):
-        group = group.dropna(subset=["mid"])
-        if group.empty:
-            continue
-        ax.plot(
-            group["scraped_at"],
-            group["mid"],
-            marker="o",
-            markersize=3,
-            linewidth=1.5,
-            label=bank,
-        )
-
-    ax.set_title(f"{pair} — mid rate over time, by bank")
-    ax.set_xlabel("Scraped at (UTC)")
-    ax.set_ylabel(f"{pair.split('/')[1]} per 1 {pair.split('/')[0]}")
-    ax.legend(title="Bank")
-    ax.grid(True, alpha=0.3)
+    ax.set_title(f"{state['pair']} — spread (% av mid)")
+    ax.set_xlabel("Skrapningstid")
+    ax.set_ylabel("Spread (%)")
+    if scatters:
+        ax.legend(loc="upper left")
     fig.autofmt_xdate()
-    fig.tight_layout()
 
-    plt.show()
+    cursor = mplcursors.cursor(scatters, hover=True)
 
+    @cursor.connect("add")
+    def _(sel):
+        row = sel.artist.rows.iloc[sel.index]
+        t = mdates.num2date(sel.target[0])
+        sel.annotation.set_text(
+            f"{sel.artist.bank_label}\n"
+            f"{t:%Y-%m-%d %H:%M}\n"
+            f"spread: {sel.target[1]:.3f} %\n"
+            f"bid: {row['bid']:.4f}\n"
+            f"ask: {row['ask']:.4f}\n"
+            f"mid: {row['mid']:.4f}"
+        )
+        sel.annotation.get_bbox_patch().set(alpha=0.9)
 
-def main(argv: list[str]) -> None:
-    path = find_latest_all_banks(OUTPUT_DIR)
-    df = load_data(path)
+    state["cursor"] = cursor
+    fig.canvas.draw_idle()
 
-    if "--list" in argv:
-        pairs = sorted(df["pair"].dropna().unique())
-        print(f"Data file: {path.name}")
-        print(f"Available pairs ({len(pairs)}):")
-        for p in pairs:
-            print(f"  {p}")
-        return
+# Par-väljare
+ax_pair = plt.axes([0.02, 0.45, 0.22, 0.45])
+radio = RadioButtons(ax_pair, pairs, active=0)
+def on_pair(label):
+    state["pair"] = label
+    redraw()
+radio.on_clicked(on_pair)
 
-    # First non-flag arg is the pair; default USD/SEK.
-    pair_args = [a for a in argv if not a.startswith("-")]
-    pair = normalize_pair(pair_args[0]) if pair_args else "USD/SEK"
+# Helg-toggle
+ax_check = plt.axes([0.02, 0.30, 0.22, 0.10])
+check = CheckButtons(ax_check, ["Dölj helger"], [False])
+def on_check(_label):
+    state["hide_weekends"] = check.get_status()[0]
+    redraw()
+check.on_clicked(on_check)
 
-    print(f"Plotting {pair} from {path.name} ...")
-    plot_pair(df, pair)
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
+redraw()
+plt.show()

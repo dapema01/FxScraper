@@ -9,9 +9,14 @@ on:
   # Lets you trigger the job manually from the Actions tab as well.
   workflow_dispatch:
 
-# Allow the workflow's GITHUB_TOKEN to push CSVs back to the repo.
+# Only contents: write is needed now — we commit both CSVs and the HTML.
 permissions:
   contents: write
+
+# Serialize runs so a manual trigger can't race the cron push.
+concurrency:
+  group: daily-fx-scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
@@ -45,13 +50,15 @@ jobs:
           retry_wait_seconds: 900
           command: python main.py
 
-      - name: Commit and push new CSVs
-        # Runs whether or not the scrape ultimately succeeded, so we still save
-        # whatever data we did manage to collect. Remove if : always() if you only want to commit on full success.
+      - name: Build plot
+        if: always()
+        run: python plot.py
+
+      - name: Commit and push CSVs + HTML
         if: always()
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add output/
-          git diff --cached --quiet || git commit -m "Daily FX scrape: $(date -u +%Y-%m-%d %H:%M)"
+          git add output/ docs/
+          git diff --cached --quiet || git commit -m "Daily FX scrape: $(date -u '+%Y-%m-%d %H:%M')"
           git push
