@@ -2,8 +2,6 @@ botasaurus
 beautifulsoup4
 requests
 pandas
-plotly.graph_objects
+plotly
 exchange_calendars
-json
-math
 numpy
