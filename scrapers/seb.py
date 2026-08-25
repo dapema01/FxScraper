@@ -30,19 +30,64 @@ FIELDNAMES = [
 ]
 
 
-# SEB returnerar en tabell med headers + rows. Varje row har en "data"-lista
-# i samma ordning som headers: [Land, Valuta, Köpkurs, Säljkurs, Datum].
-COLUMN_INDEX = {
-    "country": 0,
-    "currency": 1,
-    "buy_rate": 2,
-    "sell_rate": 3,
-    "date": 4,
+# SEB returnerar {"headers": [...], "rows": [...]} där varje rads "data"-lista
+# ligger i samma ordning som headers. Ordningen HAR ändrats en gång (Land och
+# Valuta bytte plats i augusti 2026), vilket inte kastade något fel utan bara
+# gjorde base_currency till ett landsnamn. Därför slår vi upp positionerna via
+# headers i stället för att hårdkoda dem. Både svenska och engelska etiketter
+# accepteras eftersom endpointen verkar variera med språk.
+HEADER_ALIASES = {
+    "currency": "currency",   "valuta": "currency",
+    "country": "country",     "land": "country",
+    "seb buy": "buy_rate",    "seb kop": "buy_rate",   "kopkurs": "buy_rate",
+    "seb sell": "sell_rate",  "seb salj": "sell_rate", "saljkurs": "sell_rate",
+    "date": "date",           "datum": "date",
 }
+
+REQUIRED_COLUMNS = ("currency", "buy_rate", "sell_rate")
+
+
+def _norm_header(text):
+    return (
+        (text or "")
+        .strip()
+        .lower()
+        .replace("\xa0", " ")
+        .replace("ö", "o")
+        .replace("ä", "a")
+        .replace("å", "a")
+    )
+
+
+def build_column_index(headers):
+    """Mappa logiskt kolumnnamn -> position utifrån payloadens headers.
+
+    Kastar hellre än gissar: byter SEB namn på en kolumn vill vi ha ett hårt
+    fel i CI, inte rader där base_currency tyst blivit något annat.
+    """
+    idx = {}
+
+    for i, header in enumerate(headers or []):
+        if not isinstance(header, dict):
+            continue
+
+        key = HEADER_ALIASES.get(_norm_header(header.get("value")))
+        if key and key not in idx:
+            idx[key] = i
+
+    missing = [c for c in REQUIRED_COLUMNS if c not in idx]
+    if missing:
+        found = [h.get("value") for h in (headers or []) if isinstance(h, dict)]
+        raise ValueError(
+            f"SEB-payloaden saknar kolumn(er): {', '.join(missing)}. "
+            f"Headers i svaret: {found}"
+        )
+
+    return idx
 
 
 def _cell_value(row_data, index):
-    if index >= len(row_data):
+    if index is None or index >= len(row_data):
         return None
 
     cell = row_data[index]
@@ -52,9 +97,26 @@ def _cell_value(row_data, index):
     return cell.get("value")
 
 
+def parse_number(value):
+    """SEB noterar med svenskt decimaltecken och kan ha tusentalsavskiljare."""
+    if value is None:
+        return None
+
+    text = str(value).strip().replace("\xa0", "").replace(" ", "").replace(",", ".")
+    if not text:
+        return None
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def parse_seb_payload(payload):
     if not isinstance(payload, dict):
         raise ValueError("Expected SEB payload to be a dict with headers/rows")
+
+    column_index = build_column_index(payload.get("headers"))
 
     raw_rows = payload.get("rows", [])
     if not raw_rows:
@@ -70,16 +132,18 @@ def parse_seb_payload(payload):
         if not isinstance(data, list):
             continue
 
-        currency = _cell_value(data, COLUMN_INDEX["currency"])
-        if not currency:
+        currency = (_cell_value(data, column_index["currency"]) or "").strip().upper()
+
+        # En valutakod är tre bokstäver. Filtrerar bort ev. rubrik-/summarader.
+        if len(currency) != 3 or not currency.isalpha():
             continue
 
-        buy_rate = _cell_value(data, COLUMN_INDEX["buy_rate"])
-        sell_rate = _cell_value(data, COLUMN_INDEX["sell_rate"])
+        buy_rate = parse_number(_cell_value(data, column_index["buy_rate"]))
+        sell_rate = parse_number(_cell_value(data, column_index["sell_rate"]))
 
         parsed_rows.append(
             {
-                "country": _cell_value(data, COLUMN_INDEX["country"]),
+                "country": _cell_value(data, column_index.get("country")),
                 "pair": f"{currency}/SEK",
                 "base_currency": currency,
                 "quote_currency": "SEK",
@@ -88,7 +152,7 @@ def parse_seb_payload(payload):
                 "ask_per_unit": sell_rate,
                 "buy_rate": buy_rate,
                 "sell_rate": sell_rate,
-                "date": _cell_value(data, COLUMN_INDEX["date"]),
+                "date": _cell_value(data, column_index.get("date")),
             }
         )
 
